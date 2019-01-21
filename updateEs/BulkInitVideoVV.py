@@ -8,20 +8,45 @@ from elasticsearch import helpers, Elasticsearch, ConnectionTimeout
 def main():
     s = "http://10.168.99.124:9200/"
     sindex = "zxpt_content_alias"
-    d = "http://10.168.99.124:9200/"
-    dindex = "zxpt_content_10"
     size = 1000
+    fieldName="vvCount"
+    defaultFieldName="viewCount"
 
-    export(s, sindex, d, dindex, size)
+    export(s, sindex, size,fieldName,defaultFieldName)
 
     print "[Done]"
 
 
-def export(s, sindex, d, dindex, size):
+def export(s, sindex, size,fieldName,defaultFieldName):
     es = Elasticsearch([s])
-    es_des = Elasticsearch([d])
-
-    page = es.search(index=sindex, scroll='2m', size=size)
+    page = es.search(index=sindex, scroll='2m', size=size,body={
+        "query": {
+    "bool": {
+      "must": [
+        {
+          "range": {
+            "bizType": {
+              "gte": 40,
+              "lte": 50
+            }
+          }
+        }
+      ],
+      "must_not": {
+        "exists": {
+          "field": "vvCount"
+        }
+      }
+    }
+  },
+  "sort": [
+    {
+      "bizId": {
+        "order": "asc"
+      }
+    }
+  ]
+    })
 
     try:
         sid = page['_scroll_id']
@@ -34,7 +59,7 @@ def export(s, sindex, d, dindex, size):
 
     allsize = len(page['hits']['hits'])
 
-    bulkdata(es_des, page['hits']['hits'], dindex, size)
+    bulkdata(es, page['hits']['hits'], size)
 
     while scroll_size > 0:
         printSth("Scrolling...")
@@ -47,21 +72,21 @@ def export(s, sindex, d, dindex, size):
         allsize += scroll_size
         printSth("scroll size: " + str(scroll_size) + "  all size: " + str(allsize) + "  \r\n")
 
-        bulkdata(es_des, page['hits']['hits'], dindex, size)
+        bulkdata(es, page['hits']['hits'],size)
 
     print("\n" + sid)
 
     es.clear_scroll(sid)
 
-def bulkdata(es_des, pagedata, dindex, size):
+def bulkdata(es_des, pagedata, size):
     f = pagedata
     for a in f:
-        a["_index"] = dindex
+        a["_source"]["vvCount"] = a["_source"]["viewCount"]
     try:
         helpers.bulk(es_des, f)
     except  ConnectionTimeout as error:
         printSth("time out retry\r\n")
-        bulkdata(es_des, pagedata, dindex, size)
+        bulkdata(es_des, pagedata, size)
 
 
 
