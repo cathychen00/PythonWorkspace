@@ -8,8 +8,8 @@ from elasticsearch import helpers, Elasticsearch, ConnectionTimeout
 def main():
     s = "http://10.168.99.124:9200/"
     sindex = "zxpt_content_alias"
-    d = "http://10.168.99.124:9200/"
-    dindex = "zxpt_content_10"
+    d = "http://10.27.14.162:9200/"
+    dindex = "zxpt_content_alias"
     size = 1000
 
     export(s, sindex, d, dindex, size)
