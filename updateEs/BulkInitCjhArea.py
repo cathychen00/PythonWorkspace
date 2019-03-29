@@ -10,14 +10,13 @@ def main():
     s = ["http://10.27.14.162:9200","http://10.27.14.163:9200"]
     sindex = "zxpt_content_alias"
     size = 5000
-    fieldName = "countyIds"
 
-    export(s, sindex, size, fieldName)
+    export(s, sindex, size)
 
     print "[Done]"
 
 
-def export(s, sindex, size, fieldName):
+def export(s, sindex, size):
     es = Elasticsearch(s)
     page = es.search(index=sindex, scroll='5m', size=size, body={
         "query": {
@@ -31,12 +30,7 @@ def export(s, sindex, size, fieldName):
                             }
                         }
                     }
-                ],
-                "must_not": {
-                    "exists": {
-                        "field": fieldName
-                    }
-                }
+                ]
             }
         },
         "sort": [
@@ -59,7 +53,7 @@ def export(s, sindex, size, fieldName):
 
     allsize = len(page['hits']['hits'])
 
-    bulkdata(es, page['hits']['hits'], size, fieldName)
+    bulkdata(es, page['hits']['hits'], size)
 
     while scroll_size > 0:
         printSth("Scrolling...")
@@ -72,22 +66,24 @@ def export(s, sindex, size, fieldName):
         allsize += scroll_size
         printSth("scroll size: " + str(scroll_size) + "  all size: " + str(allsize) + "  \r\n")
 
-        bulkdata(es, page['hits']['hits'], size, fieldName)
+        bulkdata(es, page['hits']['hits'], size)
 
     print("\n" + sid)
 
     es.clear_scroll(sid)
 
 
-def bulkdata(es_des, pagedata, size, fieldName):
+def bulkdata(es_des, pagedata, size):
     f = pagedata
     for a in f:
-            a["_source"][fieldName] = 0
+            a["_source"]["provinceIds"] = 0
+            a["_source"]["cityIds"] = 0
+            a["_source"]["countyIds"] = 0
     try:
         helpers.bulk(es_des, f)
     except  ConnectionTimeout as error:
         printSth("time out retry\r\n")
-        bulkdata(es_des, pagedata, size, fieldName)
+        bulkdata(es_des, pagedata, size)
 
 
 def getpage(es, sid):
